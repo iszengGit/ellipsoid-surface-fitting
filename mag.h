@@ -3,13 +3,19 @@ typedef enum bool{
     false,
     true
 }bool;
-
+#if 0
 typedef struct magcoord{
     short int x;
     short int y;
     short int z;
 } magcoord;
-
+#else
+typedef struct magcoord{
+    double x;
+    double y;
+    double z;
+} magcoord;
+#endif
 magcoord rawCoo[8];
 #define poolCooLen 300
 magcoord poolCoo[poolCooLen];

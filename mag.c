@@ -2,6 +2,8 @@
 #include "mag.h"
 #include "math.h"
 
+#define DEBUG
+
 int usedSub[poolCooLen];
 int subFlag = 0;
 
@@ -84,11 +86,11 @@ NEXTj:
 }
 
 
+#define  SupMat 8
 
-
-double matd[8][6];
-double transMatd[6][8];
-double matc[8][1];
+double matd[SupMat][6];//[8][6]
+double transMatd[6][SupMat];//[6][8]
+double matc[SupMat][1];//[8][1]
 double matw[6][1];
 
 magresult initu;            // INITIAL VALUE
@@ -103,9 +105,17 @@ void initMatd()
     int i, j;
 
     // Update rawCoo
-    updateRawCoo(); 
-
-    for (i = 0; i < 8; i++) {
+    //updateRawCoo();
+    rawCoo[6] = (magcoord){-48, -1, -25};
+    rawCoo[7] = (magcoord){96, 49, -27};
+    rawCoo[2] = (magcoord){29, -102, -8};
+    rawCoo[3] = (magcoord){46, 87, -14};
+    rawCoo[4] = (magcoord){13, -2, -104};
+    rawCoo[5] = (magcoord){19, -28, 82};
+    rawCoo[0] = (magcoord){44, -90, -50};
+    rawCoo[1] = (magcoord){40, -97, -35};
+    
+    for (i = 0; i < SupMat; i++) {// i < 8
         matd[i][0] = -pow(rawCoo[i].y, 2);
         matd[i][1] = -pow(rawCoo[i].z, 2);
         matd[i][2] = 2*rawCoo[i].x;
@@ -114,26 +124,50 @@ void initMatd()
         matd[i][5] = 1;
     }
 
-    for (i = 0; i < 8; i++)
+    for (i = 0; i < SupMat; i++) // i < 8
         for (j = 0; j < 6; j++){
             transMatd[j][i] = matd[i][j];
         }
 
-    for (i = 0; i < 8; i++)
+    for (i = 0; i < SupMat; i++) // i < 8
         matc[i][0] = pow(rawCoo[i].x, 2);
+
+#ifdef DEBUG
+    printf("\r\nD Matrix:\r\n");
+    for (i = 0; i < SupMat; i++) {  // i < 8
+        for (j = 0; j < 6; j++) {
+            printf("%f   ",matd[i][j]);
+        }
+        printf("\r\n");
+    }
+
+    printf("\r\nThe transpose of D Matrix:\r\n");
+    for (i = 0; i < 6; i++) {
+        for (j = 0; j < SupMat; j++) { // j < 8
+            printf("%f   ", transMatd[i][j]);
+        }
+        printf("\r\n");
+    }
+
+    printf("\r\nC Matrix:\r\n");
+    for (i = 0; i < SupMat; i++) {   // i < 8
+        printf("%f   ", matc[i][0]);
+    }
+    printf("\r\n");
+#endif
 }
 
 void calcInitialValue()
 {
     double prod1[6][6] = {{0.0}}, temp = 0;
     double invProd1[6][6] = {{0.0}};
-    double prod2[6][6] = {{0.0}};
+    double prod2[6][SupMat] = {{0.0}};   // bug !!!
     int i, j, k;
 
     // Calculate the prod1
     for (i = 0; i < 6; i++)
         for (j = 0; j < 6; j++) {
-            for (k = 0, temp = 0; k < 8; k++){
+            for (k = 0, temp = 0; k < SupMat; k++){
                 temp += transMatd[j][k]*matd[k][i];
             }
             prod1[j][i] = temp;
@@ -143,7 +177,7 @@ void calcInitialValue()
     calcInv(prod1, 6, invProd1);
 
     // Calculate the prod2
-    for (i = 0; i < 8; i++)
+    for (i = 0; i < SupMat; i++) // i < 8
         for (j = 0; j < 6; j++){
             for (k = 0, temp = 0; k < 6; k++){
                 temp += invProd1[j][k]*transMatd[k][i];            
@@ -153,7 +187,7 @@ void calcInitialValue()
     
     // Calculate matw
     for (i = 0; i < 6; i++) {
-        for (j = 0, temp = 0; j < 8; j++) {
+        for (j = 0, temp = 0; j < SupMat; j++) { // j < 8
             temp += prod2[i][j]*matc[j][0];
         }
         matw[i][0] = temp;
@@ -166,6 +200,38 @@ void calcInitialValue()
     initu.A = sqrt(matw[0][0]);
     initu.B = sqrt(matw[1][0]); 
     initu.R = sqrt(matw[5][0] + matw[3][0]*initu.y0 + matw[4][0]*initu.z0 + pow(matw[2][0], 2));
+
+#ifdef DEBUG
+    printf("\r\nprod1:\r\n");
+    for (i = 0; i < 6; i++) {
+        for(j = 0; j < 6; j++) {
+            printf("%f   ", prod1[i][j]);
+        }
+        printf("\r\n");
+    }
+    printf("\r\nThe inverse of prod1:\r\n");
+    for (i = 0; i < 6; i++) {
+        for(j = 0; j < 6; j++) {
+            printf("%f   ", invProd1[i][j]);
+        }
+        printf("\r\n");
+    }
+    printf("\r\nprod2:\r\n");
+    for (i = 0; i < 6; i++) {
+        for(j = 0; j < SupMat; j++) {  // j < 8
+            printf("%f   ", prod2[i][j]);
+        }
+        printf("\r\n");
+    }
+    printf("\r\n w Matrix:\r\n");
+    for(j = 0; j < 6; j++) {
+        printf("%f   ", matw[j][0]);
+    }
+    printf("\r\n");
+
+    printf("\r\nx0-y0-z0-A-B-R:\r\n\r\n");   
+    printf("x0=%f  y0=%f  z0=%f  \r\nA=%f  B=%f  R=%f\r\n", initu.x0, initu.y0,initu.z0,initu.A, initu.B, initu.R);
+#endif
 }
 
 double math[8][6];
@@ -306,21 +372,22 @@ fitresult owo[10];     // To print them for watching the fitting process
 
 int main()
 {
-   int i;
-
-   initMatd(); 
-   calcInitialValue(); 
-
-   for (i = 0; i < 10; i++) {   
-       initMath();
-       calcMarginOfError();
-       powerOfDifference();
-       owo[i].mini = miniSum;
-       owo[i].u = initu;
-       owo[i].delt = deltau;
-   }
-   
-    
+    int i, j;
+    double inv[6][6];
+    double temp;
+    double res[6][1];
+    initMatd(); 
+    calcInitialValue(); 
+    /*
+       for (i = 0; i < 10; i++) {   
+           initMath();
+           calcMarginOfError();
+           powerOfDifference();
+           owo[i].mini = miniSum;
+           owo[i].u = initu;
+           owo[i].delt = deltau;
+       }
+      */ 
     
     return 0;
 }
