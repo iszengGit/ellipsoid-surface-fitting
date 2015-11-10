@@ -2,7 +2,6 @@
 #include "mag.h"
 #include "math.h"
 
-#define DEBUG
 
 int usedSub[poolCooLen];
 int subFlag = 0;
@@ -88,9 +87,9 @@ NEXTj:
 
 #define  SupMat 8
 
-double matd[SupMat][6];//[8][6]
-double transMatd[6][SupMat];//[6][8]
-double matc[SupMat][1];//[8][1]
+double matd[SupMat][6];
+double transMatd[6][SupMat];
+double matc[SupMat][1];
 double matw[6][1];
 
 magresult initu;            // INITIAL VALUE
@@ -105,15 +104,7 @@ void initMatd()
     int i, j;
 
     // Update rawCoo
-    //updateRawCoo();
-    rawCoo[6] = (magcoord){-48, -1, -25};
-    rawCoo[7] = (magcoord){96, 49, -27};
-    rawCoo[2] = (magcoord){29, -102, -8};
-    rawCoo[3] = (magcoord){46, 87, -14};
-    rawCoo[4] = (magcoord){13, -2, -104};
-    rawCoo[5] = (magcoord){19, -28, 82};
-    rawCoo[0] = (magcoord){44, -90, -50};
-    rawCoo[1] = (magcoord){40, -97, -35};
+    updateRawCoo();
     
     for (i = 0; i < SupMat; i++) {// i < 8
         matd[i][0] = -pow(rawCoo[i].y, 2);
@@ -132,29 +123,6 @@ void initMatd()
     for (i = 0; i < SupMat; i++) // i < 8
         matc[i][0] = pow(rawCoo[i].x, 2);
 
-#ifdef DEBUG
-    printf("\r\nD Matrix:\r\n");
-    for (i = 0; i < SupMat; i++) {  // i < 8
-        for (j = 0; j < 6; j++) {
-            printf("%f   ",matd[i][j]);
-        }
-        printf("\r\n");
-    }
-
-    printf("\r\nThe transpose of D Matrix:\r\n");
-    for (i = 0; i < 6; i++) {
-        for (j = 0; j < SupMat; j++) { // j < 8
-            printf("%f   ", transMatd[i][j]);
-        }
-        printf("\r\n");
-    }
-
-    printf("\r\nC Matrix:\r\n");
-    for (i = 0; i < SupMat; i++) {   // i < 8
-        printf("%f   ", matc[i][0]);
-    }
-    printf("\r\n");
-#endif
 }
 
 void calcInitialValue()
@@ -201,37 +169,6 @@ void calcInitialValue()
     initu.B = sqrt(matw[1][0]); 
     initu.R = sqrt(matw[5][0] + matw[3][0]*initu.y0 + matw[4][0]*initu.z0 + pow(matw[2][0], 2));
 
-#ifdef DEBUG
-    printf("\r\nprod1:\r\n");
-    for (i = 0; i < 6; i++) {
-        for(j = 0; j < 6; j++) {
-            printf("%f   ", prod1[i][j]);
-        }
-        printf("\r\n");
-    }
-    printf("\r\nThe inverse of prod1:\r\n");
-    for (i = 0; i < 6; i++) {
-        for(j = 0; j < 6; j++) {
-            printf("%f   ", invProd1[i][j]);
-        }
-        printf("\r\n");
-    }
-    printf("\r\nprod2:\r\n");
-    for (i = 0; i < 6; i++) {
-        for(j = 0; j < SupMat; j++) {  // j < 8
-            printf("%f   ", prod2[i][j]);
-        }
-        printf("\r\n");
-    }
-    printf("\r\n w Matrix:\r\n");
-    for(j = 0; j < 6; j++) {
-        printf("%f   ", matw[j][0]);
-    }
-    printf("\r\n");
-
-    printf("\r\nx0-y0-z0-A-B-R:\r\n\r\n");   
-    printf("x0=%f  y0=%f  z0=%f  \r\nA=%f  B=%f  R=%f\r\n", initu.x0, initu.y0,initu.z0,initu.A, initu.B, initu.R);
-#endif
 }
 
 double math[8][6];
@@ -261,6 +198,7 @@ void initMath()
     initu.A += deltau.A;
     initu.B += deltau.B;
     initu.R += deltau.R;
+
     // Initialize math[8][6]
     for (i = 0; i < 8; i++) {
         math[i][0] = 2*(rawCoo[i].x - initu.x0);
@@ -296,7 +234,7 @@ void calcMarginOfError()
 
     // Calc prod1[6][6] 
     for (i = 0; i < 6; i++)
-        for (j = 0; j < 6; j++){
+        for (j = 0; j < 6; j++) {
             for (k = 0, temp = 0; k < 8; k++) {
                 temp += transMath[j][k]*math[k][i];
             }
@@ -308,8 +246,8 @@ void calcMarginOfError()
 
     // Calc prod2[6][8]
     for (i = 0; i < 8; i++)
-        for (j = 0; j < 6; j++){
-            for (k = 0, temp = 0; k < 6; k++){
+        for (j = 0; j < 6; j++) {
+            for (k = 0, temp = 0; k < 6; k++) {
                 temp += inv[j][k]*transMath[k][i];
             }
             prod2[j][i] = temp;
@@ -317,7 +255,7 @@ void calcMarginOfError()
 
     // Get result
     for (i = 0; i < 6; i++) {
-        for (j = 0, temp = 0; j < 8; j++){
+        for (j = 0, temp = 0; j < 8; j++) {
             temp += prod2[i][j]*maty[j][0];
         }
         matDeltau[i][0] = temp;
@@ -369,26 +307,38 @@ fitresult owo[10];     // To print them for watching the fitting process
  *
  *
  */
-
 int main()
 {
     int i, j;
-    double inv[6][6];
     double temp;
-    double res[6][1];
-    initMatd(); 
-    calcInitialValue(); 
-    /*
-       for (i = 0; i < 10; i++) {   
-           initMath();
-           calcMarginOfError();
-           powerOfDifference();
-           owo[i].mini = miniSum;
-           owo[i].u = initu;
-           owo[i].delt = deltau;
-       }
-      */ 
     
+    initMatd();
+    calcInitialValue(); 
+    
+    for (i = 0; i < 10; i++) {   
+        initMath();
+        calcMarginOfError();
+        powerOfDifference();
+        owo[i].mini = miniSum;
+        owo[i].u = initu;
+        owo[i].delt = deltau;
+    }
+
+    for (i = 1, temp = owo[j=0].mini; i < 10; i++) {
+        if (temp > owo[i].mini) {
+            temp = owo[i].mini;
+            j = i;
+        }    
+    }   
+
+    // Get the result
+    initu.x0 = owo[j].u.x0 + owo[j].delt.x0;
+    initu.y0 = owo[j].u.y0 + owo[j].delt.y0;
+    initu.z0 = owo[j].u.z0 + owo[j].delt.z0;
+    initu.A = owo[j].u.A + owo[j].delt.A;
+    initu.B = owo[j].u.B + owo[j].delt.B;
+    initu.R = owo[j].u.R + owo[j].delt.R;
+
     return 0;
 }
 
